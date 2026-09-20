@@ -53,7 +53,7 @@ pipeline:
 
                   spec:
                     mode: orchestration
-                    config: default
+                    config: fs
 
                     target:
                       name: Harness-CI-CD-Zero-to-Hero
