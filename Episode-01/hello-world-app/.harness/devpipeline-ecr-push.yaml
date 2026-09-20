@@ -1,10 +1,8 @@
 pipeline:
   name: devpipelineecr
   identifier: devpipelineecr
-
   projectIdentifier: HarnessCICD
   orgIdentifier: default
-
   tags: {}
 
   properties:
@@ -18,47 +16,28 @@ pipeline:
     - stage:
         name: Build and Scan
         identifier: Build_and_Scan
-        description: ""
         type: CI
 
         spec:
           cloneCodebase: true
 
-          caching:
-            enabled: true
-            override: true
-
-          buildIntelligence:
-            enabled: true
-
-          platform:
-            os: Linux
-            arch: Amd64
-
-          runtime:
-            type: Docker
-            spec: {}
-
           execution:
             steps:
 
-              # ==================================================
+              # ============================================================
               # 1. TRIVY FILESYSTEM SCAN
-              #    REPORT ONLY - DO NOT FAIL
-              # ==================================================
-
+              # ============================================================
               - step:
                   type: AquaTrivy
-                  name: Trivy Filesystem Scan
-                  identifier: Trivy_Filesystem_Scan
-
+                  name: Trivy FS Scan
+                  identifier: Trivy_FS_Scan
                   spec:
                     mode: orchestration
                     config: fs
 
                     target:
-                      name: Harness-CI-CD-Zero-to-Hero
                       type: repository
+                      name: Harness-CI-CD-Zero-to-Hero
                       variant: <+input>
 
                     advanced:
@@ -66,17 +45,16 @@ pipeline:
                         level: info
                       fail_on_severity: none
 
+                    privileged: true
 
-              # ==================================================
-              # 2. DOCKER BUILD
-              #    IMAGE REMAINS IN DOCKER DAEMON
-              # ==================================================
 
+              # ============================================================
+              # 2. BUILD DOCKER IMAGE
+              # ============================================================
               - step:
                   type: Run
                   name: Build Docker Image
                   identifier: Build_Docker_Image
-
                   spec:
                     image: docker:28-cli
                     shell: Sh
@@ -85,54 +63,63 @@ pipeline:
                     command: |-
                       set -e
 
-                      IMAGE_NAME="<+variable.AWS_ACCOUNT_ID>.dkr.ecr.<+variable.AWS_REGION>.amazonaws.com/<+variable.ECR_REPOSITORY>:<+codebase.commitSha>"
+                      ECR_IMAGE="<+variable.AWS_ACCOUNT_ID>.dkr.ecr.<+variable.AWS_REGION>.amazonaws.com/<+variable.ECR_REPOSITORY>:<+codebase.commitSha>"
 
-                      echo "=========================================="
-                      echo "Docker Version"
-                      echo "=========================================="
-
-                      docker version
-
-                      echo "=========================================="
-                      echo "Image Name"
-                      echo "=========================================="
-
-                      echo "${IMAGE_NAME}"
+                      LOCAL_IMAGE="<+variable.ECR_REPOSITORY>:<+codebase.commitSha>"
 
                       echo "=========================================="
                       echo "Building Docker Image"
                       echo "=========================================="
 
+                      echo "Docker Context : <+variable.DOCKER_CONTEXT>"
+                      echo "Dockerfile     : <+variable.DOCKERFILE_PATH>"
+                      echo "ECR Image      : ${ECR_IMAGE}"
+                      echo "Local Image    : ${LOCAL_IMAGE}"
+
+                      echo ""
+                      echo "Starting Docker build..."
+
                       docker build \
                         --pull \
                         -f "<+variable.DOCKERFILE_PATH>" \
-                        -t "${IMAGE_NAME}" \
+                        -t "${ECR_IMAGE}" \
                         "<+variable.DOCKER_CONTEXT>"
 
+                      echo ""
+                      echo "Creating local tag for Trivy..."
+
+                      docker tag "${ECR_IMAGE}" "${LOCAL_IMAGE}"
+
+                      echo ""
                       echo "=========================================="
-                      echo "Docker Image Created"
+                      echo "Docker Images"
                       echo "=========================================="
 
-                      docker images "${IMAGE_NAME}"
+                      docker images | grep "<+variable.ECR_REPOSITORY>" || true
 
+                      echo ""
                       echo "=========================================="
-                      echo "Docker Image ID"
+                      echo "ECR Image ID"
                       echo "=========================================="
 
-                      docker image inspect "${IMAGE_NAME}" \
+                      docker image inspect "${ECR_IMAGE}" \
                         --format '{{.Id}}'
 
+                      echo ""
                       echo "=========================================="
-                      echo "Build Completed Successfully"
+                      echo "Local Image ID"
                       echo "=========================================="
 
+                      docker image inspect "${LOCAL_IMAGE}" \
+                        --format '{{.Id}}'
 
-              # ==================================================
-              # 3. TRIVY IMAGE SCAN
-              #    LOCAL DOCKER IMAGE
-              #    REPORT ONLY - DO NOT FAIL
-              # ==================================================
+                      echo ""
+                      echo "Build completed successfully."
 
+
+              # ============================================================
+              # 3. TRIVY DOCKER IMAGE SCAN
+              # ============================================================
               - step:
                   type: AquaTrivy
                   name: Trivy Image Scan
@@ -150,6 +137,9 @@ pipeline:
                     advanced:
                       log:
                         level: info
+
+                      # Report only.
+                      # Critical/High findings will NOT fail the pipeline.
                       fail_on_severity: none
 
                     privileged: true
@@ -160,11 +150,9 @@ pipeline:
                       tag: <+codebase.commitSha>
 
 
-              # ==================================================
+              # ============================================================
               # 4. PUSH IMAGE TO ECR
-              #    USE HARNESS AWS OIDC CONNECTOR
-              # ==================================================
-
+              # ============================================================
               - step:
                   type: BuildAndPushECR
                   name: Push Image to ECR
@@ -174,12 +162,14 @@ pipeline:
                     connectorRef: account.dkaws
 
                     region: <+variable.AWS_REGION>
-                    account: <+variable.AWS_ACCOUNT_ID>
 
-                    imageName: <+variable.ECR_REPOSITORY>
+                    accountId: <+variable.AWS_ACCOUNT_ID>
+
+                    repo: <+variable.ECR_REPOSITORY>
 
                     tags:
                       - <+codebase.commitSha>
 
-                    envVariables:
-                      PLUGIN_PUSH_ONLY: "true"
+                    dockerfile: <+variable.DOCKERFILE_PATH>
+
+                    context: <+variable.DOCKER_CONTEXT>
