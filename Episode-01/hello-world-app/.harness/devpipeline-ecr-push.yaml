@@ -39,6 +39,13 @@ pipeline:
             type: Docker
             spec: {}
 
+          # /harness is the default shared workspace.
+          # Keep the archive inside /harness so it is available
+          # to the following steps.
+          sharedPaths:
+            - /var/run
+            - /var/lib/docker
+
           execution:
             steps:
 
@@ -63,43 +70,77 @@ pipeline:
                     advanced:
                       log:
                         level: info
-
-                      # Report only - DO NOT FAIL
                       fail_on_severity: none
 
 
               # ==================================================
-              # 2. DOCKER BUILD
-              #    BUILD ONLY - NO PUSH
+              # 2. DOCKER BUILD + SAVE TAR
               # ==================================================
 
               - step:
-                  type: BuildAndPushECR
+                  type: Run
                   name: Build Docker Image
                   identifier: Build_Docker_Image
 
                   spec:
-                    connectorRef: account.dkaws
+                    image: docker:28-cli
+                    shell: Sh
+                    privileged: true
 
-                    region: <+variable.AWS_REGION>
-                    account: <+variable.AWS_ACCOUNT_ID>
+                    command: |-
+                      set -e
 
-                    imageName: <+variable.ECR_REPOSITORY>
+                      IMAGE_NAME="980921730778.dkr.ecr.ap-south-1.amazonaws.com/dev/harnessai-repo:<+codebase.commitSha>"
+                      IMAGE_TAR="/harness/hello-world-image.tar"
 
-                    tags:
-                      - <+codebase.commitSha>
+                      echo "=========================================="
+                      echo "Docker Version"
+                      echo "=========================================="
 
-                    dockerfile: <+variable.DOCKERFILE_PATH>
-                    context: <+variable.DOCKER_CONTEXT>
+                      docker version
 
-                    envVariables:
-                      PLUGIN_NO_PUSH: "true"
-                      PLUGIN_TAR_PATH: hello-world-image.tar
+                      echo "=========================================="
+                      echo "Building Docker Image"
+                      echo "=========================================="
+
+                      docker build \
+                        --pull \
+                        -f "<+variable.DOCKERFILE_PATH>" \
+                        -t "${IMAGE_NAME}" \
+                        "<+variable.DOCKER_CONTEXT>"
+
+                      echo "=========================================="
+                      echo "Docker Image Created"
+                      echo "=========================================="
+
+                      docker images "${IMAGE_NAME}"
+
+                      echo "=========================================="
+                      echo "Saving Docker Image"
+                      echo "=========================================="
+
+                      rm -f "${IMAGE_TAR}"
+
+                      docker save \
+                        -o "${IMAGE_TAR}" \
+                        "${IMAGE_NAME}"
+
+                      echo "=========================================="
+                      echo "Validating Docker TAR"
+                      echo "=========================================="
+
+                      ls -lh "${IMAGE_TAR}"
+
+                      file "${IMAGE_TAR}"
+
+                      echo "=========================================="
+                      echo "Docker TAR successfully created"
+                      echo "=========================================="
 
 
               # ==================================================
               # 3. TRIVY IMAGE SCAN
-              #    REPORT ONLY - DO NOT FAIL
+              #    REPORT ONLY
               # ==================================================
 
               - step:
@@ -115,14 +156,12 @@ pipeline:
                       name: <+variable.ECR_REPOSITORY>
                       type: container
                       variant: <+codebase.commitSha>
-                      workspace: hello-world-image.tar
+                      workspace: /harness/hello-world-image.tar
                       detection: manual
 
                     advanced:
                       log:
                         level: info
-
-                      # Report only - DO NOT FAIL
                       fail_on_severity: none
 
                     privileged: true
@@ -132,8 +171,7 @@ pipeline:
 
 
               # ==================================================
-              # 4. PUSH IMAGE TO ECR
-              #    PUSH EXISTING TAR - NO REBUILD
+              # 4. PUSH EXISTING TAR TO ECR
               # ==================================================
 
               - step:
@@ -154,4 +192,4 @@ pipeline:
 
                     envVariables:
                       PLUGIN_PUSH_ONLY: "true"
-                      PLUGIN_SOURCE_TAR_PATH: hello-world-image.tar
+                      PLUGIN_SOURCE_TAR_PATH: /harness/hello-world-image.tar
