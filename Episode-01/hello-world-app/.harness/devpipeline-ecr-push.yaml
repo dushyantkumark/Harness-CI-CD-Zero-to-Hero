@@ -14,6 +14,25 @@ pipeline:
         repoName: Harness-CI-CD-Zero-to-Hero
         build: <+input>
 
+  # ================================================================
+  # PIPELINE VARIABLES
+  # ================================================================
+  variables:
+
+    # ================================================================
+    # TRIVY FS SCAN CONTROL
+    #
+    # true  -> Trivy FS Scan will run
+    # false -> Trivy FS Scan will be skipped
+    #
+    # Run Pipeline UI will show only true / false as selectable values.
+    # ================================================================
+    - name: RUN_TRIVY_FS_SCAN
+      type: String
+      description: "Run Trivy filesystem scan?"
+      required: true
+      value: <+input>.allowedValues(true,false)
+
   stages:
 
     # ================================================================
@@ -53,13 +72,10 @@ pipeline:
                   name: Trivy FS Scan
                   identifier: Trivy_FS_Scan
 
-                  # ==================================================
-                  # RUNTIME CONDITIONAL EXECUTION
-                  #
-                  # At pipeline runtime, Harness will ask whether
-                  # this step should execute.
-                  # ==================================================
-                  when: <+input>
+                  # Run only when RUN_TRIVY_FS_SCAN = true
+                  when:
+                    stageStatus: Success
+                    condition: <+pipeline.variables.RUN_TRIVY_FS_SCAN> == "true"
 
                   spec:
                     mode: orchestration
@@ -74,8 +90,8 @@ pipeline:
                       log:
                         level: info
 
-                      # Report only
-                      # Vulnerabilities will NOT fail the pipeline
+                      # Report only.
+                      # Vulnerabilities will NOT fail the pipeline.
                       fail_on_severity: none
 
                     privileged: true
