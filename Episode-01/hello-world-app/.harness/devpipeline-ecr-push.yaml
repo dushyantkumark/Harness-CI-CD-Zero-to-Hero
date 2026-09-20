@@ -14,6 +14,17 @@ pipeline:
         repoName: Harness-CI-CD-Zero-to-Hero
         build: <+input>
 
+  variables:
+
+    # ================================================================
+    # TRIVY FILESYSTEM SCAN CHECKBOX
+    # ================================================================
+    - name: RUN_TRIVY_FS_SCAN
+      type: Boolean
+      description: "Run Trivy filesystem scan"
+      required: false
+      value: false
+
   stages:
 
     # ================================================================
@@ -52,6 +63,10 @@ pipeline:
                   type: AquaTrivy
                   name: Trivy FS Scan
                   identifier: Trivy_FS_Scan
+
+                  when:
+                    stageStatus: Success
+                    condition: <+pipeline.variables.RUN_TRIVY_FS_SCAN> == true
 
                   spec:
                     mode: orchestration
@@ -160,34 +175,32 @@ pipeline:
               # ======================================================
               # 3. TRIVY DOCKER IMAGE SCAN
               # ======================================================
-              - step:
-                  type: AquaTrivy
-                  name: Trivy Image Scan
-                  identifier: Trivy_Image_Scan
+              # - step:
+              #     type: AquaTrivy
+              #     name: Trivy Image Scan
+              #     identifier: Trivy_Image_Scan
 
-                  spec:
-                    mode: orchestration
-                    config: default
+              #     spec:
+              #       mode: orchestration
+              #       config: default
 
-                    target:
-                      type: container
-                      name: <+variable.ECR_REPOSITORY>
-                      variant: <+codebase.commitSha>
+              #       target:
+              #         type: container
+              #         name: <+variable.ECR_REPOSITORY>
+              #         variant: <+codebase.commitSha>
 
-                    advanced:
-                      log:
-                        level: info
+              #       advanced:
+              #         log:
+              #           level: info
 
-                      # Report only
-                      # Do NOT fail pipeline on vulnerabilities
-                      fail_on_severity: none
+              #         fail_on_severity: none
 
-                    privileged: true
+              #       privileged: true
 
-                    image:
-                      type: local_image
-                      name: <+variable.ECR_REPOSITORY>
-                      tag: <+codebase.commitSha>
+              #       image:
+              #         type: local_image
+              #         name: <+variable.ECR_REPOSITORY>
+              #         tag: <+codebase.commitSha>
 
 
               # ======================================================
