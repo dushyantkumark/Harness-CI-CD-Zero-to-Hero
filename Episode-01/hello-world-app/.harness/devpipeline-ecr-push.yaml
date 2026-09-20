@@ -79,7 +79,7 @@ pipeline:
                   identifier: Build_Docker_Image
 
                   spec:
-                    connectorRef: AWS_ECR_OIDC
+                    connectorRef: aws.AWS_ECR_OIDC
 
                     region: <+pipeline.variables.AWS_REGION>
                     account: <+pipeline.variables.AWS_ACCOUNT_ID>
