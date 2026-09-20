@@ -58,7 +58,7 @@ pipeline:
                     target:
                       name: Harness-CI-CD-Zero-to-Hero
                       type: repository
-                      variant: <+codebase.branch.name>
+                      variant: <+input>
 
                     advanced:
                       log:
