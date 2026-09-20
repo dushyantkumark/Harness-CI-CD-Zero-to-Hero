@@ -79,7 +79,7 @@ pipeline:
                   identifier: Build_Docker_Image
 
                   spec:
-                    connectorRef: aws.AWS_ECR_OIDC
+                    connectorRef: account.dkaws
 
                     region: <+pipeline.variables.AWS_REGION>
                     account: <+pipeline.variables.AWS_ACCOUNT_ID>
@@ -140,7 +140,7 @@ pipeline:
                   identifier: Push_Image_to_ECR
 
                   spec:
-                    connectorRef: AWS_ECR_OIDC
+                    connectorRef: account.dkaws
 
                     region: <+pipeline.variables.AWS_REGION>
                     account: <+pipeline.variables.AWS_ACCOUNT_ID>
