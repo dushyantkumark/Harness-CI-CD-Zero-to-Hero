@@ -14,20 +14,6 @@ pipeline:
         repoName: Harness-CI-CD-Zero-to-Hero
         build: <+input>
 
-  # ================================================================
-  # PIPELINE VARIABLES
-  # ================================================================
-  variables:
-
-    # Runtime input:
-    # true  = Run Trivy FS Scan
-    # false = Skip Trivy FS Scan
-    - name: RUN_TRIVY_FS_SCAN
-      type: String
-      description: "Run Trivy filesystem scan? Enter true or false."
-      required: true
-      value: <+input>
-
   stages:
 
     # ================================================================
@@ -67,12 +53,13 @@ pipeline:
                   name: Trivy FS Scan
                   identifier: Trivy_FS_Scan
 
-                  # --------------------------------------------------
-                  # Run only when user selects "true"
-                  # --------------------------------------------------
-                  when:
-                    stageStatus: Success
-                    condition: <+pipeline.variables.RUN_TRIVY_FS_SCAN> == "true"
+                  # ==================================================
+                  # RUNTIME CONDITIONAL EXECUTION
+                  #
+                  # At pipeline runtime, Harness will ask whether
+                  # this step should execute.
+                  # ==================================================
+                  when: <+input>
 
                   spec:
                     mode: orchestration
