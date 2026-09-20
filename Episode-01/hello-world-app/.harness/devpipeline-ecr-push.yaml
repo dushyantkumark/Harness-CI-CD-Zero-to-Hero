@@ -94,7 +94,7 @@ pipeline:
 
                     envVariables:
                       PLUGIN_NO_PUSH: "true"
-                      PLUGIN_TAR_PATH: /harness/hello-world-image.tar
+                      PLUGIN_TAR_PATH: hello-world-image.tar
 
 
               # ==================================================
@@ -115,6 +115,8 @@ pipeline:
                       name: <+variable.ECR_REPOSITORY>
                       type: container
                       variant: <+codebase.commitSha>
+                      workspace: hello-world-image.tar
+                      detection: manual
 
                     advanced:
                       log:
@@ -127,11 +129,11 @@ pipeline:
 
                     image:
                       type: local_archive
-                      workspace: /harness/hello-world-image.tar
 
 
               # ==================================================
               # 4. PUSH IMAGE TO ECR
+              #    PUSH EXISTING TAR - NO REBUILD
               # ==================================================
 
               - step:
@@ -152,4 +154,4 @@ pipeline:
 
                     envVariables:
                       PLUGIN_PUSH_ONLY: "true"
-                      PLUGIN_SOURCE_TAR_PATH: /harness/hello-world-image.tar
+                      PLUGIN_SOURCE_TAR_PATH: hello-world-image.tar
