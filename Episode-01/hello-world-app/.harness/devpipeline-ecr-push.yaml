@@ -39,18 +39,12 @@ pipeline:
             type: Docker
             spec: {}
 
-          # /harness is the default shared workspace.
-          # Keep the archive inside /harness so it is available
-          # to the following steps.
-          sharedPaths:
-            - /var/run
-            - /var/lib/docker
-
           execution:
             steps:
 
               # ==================================================
               # 1. TRIVY FILESYSTEM SCAN
+              #    REPORT ONLY - DO NOT FAIL
               # ==================================================
 
               - step:
@@ -74,7 +68,8 @@ pipeline:
 
 
               # ==================================================
-              # 2. DOCKER BUILD + SAVE TAR
+              # 2. DOCKER BUILD
+              #    BUILD IMAGE + CREATE TAR
               # ==================================================
 
               - step:
@@ -90,8 +85,9 @@ pipeline:
                     command: |-
                       set -e
 
-                      IMAGE_NAME="980921730778.dkr.ecr.ap-south-1.amazonaws.com/dev/harnessai-repo:<+codebase.commitSha>"
-                      IMAGE_TAR="/harness/hello-world-image.tar"
+                      IMAGE_NAME="<+variable.AWS_ACCOUNT_ID>.dkr.ecr.<+variable.AWS_REGION>.amazonaws.com/<+variable.ECR_REPOSITORY>:<+codebase.commitSha>"
+
+                      IMAGE_TAR="hello-world-image.tar"
 
                       echo "=========================================="
                       echo "Docker Version"
@@ -100,7 +96,13 @@ pipeline:
                       docker version
 
                       echo "=========================================="
-                      echo "Building Docker Image"
+                      echo "Image Name"
+                      echo "=========================================="
+
+                      echo "${IMAGE_NAME}"
+
+                      echo "=========================================="
+                      echo "Docker Build"
                       echo "=========================================="
 
                       docker build \
@@ -116,7 +118,7 @@ pipeline:
                       docker images "${IMAGE_NAME}"
 
                       echo "=========================================="
-                      echo "Saving Docker Image"
+                      echo "Saving Docker Image to TAR"
                       echo "=========================================="
 
                       rm -f "${IMAGE_TAR}"
@@ -134,13 +136,13 @@ pipeline:
                       file "${IMAGE_TAR}"
 
                       echo "=========================================="
-                      echo "Docker TAR successfully created"
+                      echo "Docker TAR Created Successfully"
                       echo "=========================================="
 
 
               # ==================================================
               # 3. TRIVY IMAGE SCAN
-              #    REPORT ONLY
+              #    REPORT ONLY - DO NOT FAIL
               # ==================================================
 
               - step:
@@ -156,7 +158,7 @@ pipeline:
                       name: <+variable.ECR_REPOSITORY>
                       type: container
                       variant: <+codebase.commitSha>
-                      workspace: /harness/hello-world-image.tar
+                      workspace: hello-world-image.tar
                       detection: manual
 
                     advanced:
@@ -171,7 +173,8 @@ pipeline:
 
 
               # ==================================================
-              # 4. PUSH EXISTING TAR TO ECR
+              # 4. PUSH EXISTING IMAGE TAR TO ECR
+              #    NO REBUILD
               # ==================================================
 
               - step:
@@ -192,4 +195,4 @@ pipeline:
 
                     envVariables:
                       PLUGIN_PUSH_ONLY: "true"
-                      PLUGIN_SOURCE_TAR_PATH: /harness/hello-world-image.tar
+                      PLUGIN_SOURCE_TAR_PATH: hello-world-image.tar
