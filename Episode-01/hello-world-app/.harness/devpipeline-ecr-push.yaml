@@ -42,9 +42,9 @@ pipeline:
           execution:
             steps:
 
-              # ==========================================
+              # ==================================================
               # 1. TRIVY FILESYSTEM SCAN
-              # ==========================================
+              # ==================================================
 
               - step:
                   type: AquaTrivy
@@ -68,10 +68,10 @@ pipeline:
                       fail_on_severity: none
 
 
-              # ==========================================
+              # ==================================================
               # 2. DOCKER BUILD
               #    BUILD ONLY - NO PUSH
-              # ==========================================
+              # ==================================================
 
               - step:
                   type: BuildAndPushECR
@@ -81,26 +81,26 @@ pipeline:
                   spec:
                     connectorRef: account.dkaws
 
-                    region: <+pipeline.variables.AWS_REGION>
-                    account: <+pipeline.variables.AWS_ACCOUNT_ID>
+                    region: <+variable.AWS_REGION>
+                    account: <+variable.AWS_ACCOUNT_ID>
 
-                    imageName: <+pipeline.variables.ECR_REPOSITORY>
+                    imageName: <+variable.ECR_REPOSITORY>
 
                     tags:
                       - <+codebase.commitSha>
 
-                    dockerfile: <+pipeline.variables.DOCKERFILE_PATH>
-                    context: <+pipeline.variables.DOCKER_CONTEXT>
+                    dockerfile: <+variable.DOCKERFILE_PATH>
+                    context: <+variable.DOCKER_CONTEXT>
 
                     envVariables:
                       PLUGIN_NO_PUSH: "true"
                       PLUGIN_TAR_PATH: /harness/hello-world-image.tar
 
 
-              # ==========================================
+              # ==================================================
               # 3. TRIVY IMAGE SCAN
               #    REPORT ONLY - DO NOT FAIL
-              # ==========================================
+              # ==================================================
 
               - step:
                   type: AquaTrivy
@@ -112,7 +112,7 @@ pipeline:
                     config: default
 
                     target:
-                      name: <+pipeline.variables.ECR_REPOSITORY>
+                      name: <+variable.ECR_REPOSITORY>
                       type: container
                       variant: <+codebase.commitSha>
 
@@ -130,9 +130,9 @@ pipeline:
                       workspace: /harness/hello-world-image.tar
 
 
-              # ==========================================
+              # ==================================================
               # 4. PUSH IMAGE TO ECR
-              # ==========================================
+              # ==================================================
 
               - step:
                   type: BuildAndPushECR
@@ -142,10 +142,10 @@ pipeline:
                   spec:
                     connectorRef: account.dkaws
 
-                    region: <+pipeline.variables.AWS_REGION>
-                    account: <+pipeline.variables.AWS_ACCOUNT_ID>
+                    region: <+variable.AWS_REGION>
+                    account: <+variable.AWS_ACCOUNT_ID>
 
-                    imageName: <+pipeline.variables.ECR_REPOSITORY>
+                    imageName: <+variable.ECR_REPOSITORY>
 
                     tags:
                       - <+codebase.commitSha>
