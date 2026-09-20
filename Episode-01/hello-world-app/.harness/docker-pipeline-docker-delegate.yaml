@@ -60,6 +60,7 @@ pipeline:
                   identifier: Run_1
 
                   spec:
+                    image: maven:3.9-eclipse-temurin-21
                     shell: Sh
                     command: |-
                       echo "=== Building Hello World ==="
