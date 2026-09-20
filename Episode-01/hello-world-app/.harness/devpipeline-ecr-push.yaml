@@ -44,6 +44,7 @@ pipeline:
 
               # ==================================================
               # 1. TRIVY FILESYSTEM SCAN
+              #    REPORT ONLY - DO NOT FAIL
               # ==================================================
 
               - step:
@@ -67,8 +68,8 @@ pipeline:
 
 
               # ==================================================
-              # 2. BUILD DOCKER IMAGE
-              #    + SAVE IMAGE AS DOCKER ARCHIVE
+              # 2. BUILD IMAGE
+              #    EXPORT DIRECTLY AS DOCKER ARCHIVE
               # ==================================================
 
               - step:
@@ -95,39 +96,32 @@ pipeline:
                       docker version
 
                       echo "=========================================="
+                      echo "Buildx Version"
+                      echo "=========================================="
+
+                      docker buildx version
+
+                      echo "=========================================="
                       echo "Image Name"
                       echo "=========================================="
 
                       echo "${IMAGE_NAME}"
 
                       echo "=========================================="
-                      echo "Docker Build"
-                      echo "=========================================="
-
-                      docker build \
-                        --pull \
-                        -f "<+variable.DOCKERFILE_PATH>" \
-                        -t "${IMAGE_NAME}" \
-                        "<+variable.DOCKER_CONTEXT>"
-
-                      echo "=========================================="
-                      echo "Docker Image Created"
-                      echo "=========================================="
-
-                      docker images "${IMAGE_NAME}"
-
-                      echo "=========================================="
-                      echo "Creating Docker Archive"
+                      echo "Building Docker Image"
                       echo "=========================================="
 
                       rm -f "${IMAGE_TAR}"
 
-                      docker save \
-                        -o "${IMAGE_TAR}" \
-                        "${IMAGE_NAME}"
+                      docker buildx build \
+                        --pull \
+                        --file "<+variable.DOCKERFILE_PATH>" \
+                        --tag "${IMAGE_NAME}" \
+                        --output "type=docker,dest=${IMAGE_TAR}" \
+                        "<+variable.DOCKER_CONTEXT>"
 
                       echo "=========================================="
-                      echo "Validating Docker Archive"
+                      echo "Docker Archive Created"
                       echo "=========================================="
 
                       test -s "${IMAGE_TAR}"
@@ -139,7 +133,8 @@ pipeline:
 
               # ==================================================
               # 3. TRIVY IMAGE SCAN
-              #    REPORT ONLY
+              #    SCAN LOCAL DOCKER ARCHIVE
+              #    REPORT ONLY - DO NOT FAIL
               # ==================================================
 
               - step:
@@ -170,7 +165,8 @@ pipeline:
 
 
               # ==================================================
-              # 4. PUSH EXISTING IMAGE TO ECR
+              # 4. PUSH IMAGE TO ECR
+              #    PUSH EXISTING ARCHIVE
               #    NO REBUILD
               # ==================================================
 
