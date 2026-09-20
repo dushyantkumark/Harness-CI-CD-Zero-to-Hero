@@ -1,0 +1,155 @@
+pipeline:
+  name: devpipelineecr
+  identifier: devpipelineecr
+
+  projectIdentifier: HarnessCICD
+  orgIdentifier: default
+
+  tags: {}
+
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.dkgithub
+        repoName: Harness-CI-CD-Zero-to-Hero
+        build: <+input>
+
+  stages:
+    - stage:
+        name: Build and Scan
+        identifier: Build_and_Scan
+        description: ""
+        type: CI
+
+        spec:
+          cloneCodebase: true
+
+          caching:
+            enabled: true
+            override: true
+
+          buildIntelligence:
+            enabled: true
+
+          platform:
+            os: Linux
+            arch: Amd64
+
+          runtime:
+            type: Docker
+            spec: {}
+
+          execution:
+            steps:
+
+              # ==========================================
+              # 1. TRIVY FILESYSTEM SCAN
+              # ==========================================
+
+              - step:
+                  type: AquaTrivy
+                  name: Trivy Filesystem Scan
+                  identifier: Trivy_Filesystem_Scan
+
+                  spec:
+                    mode: orchestration
+                    config: default
+
+                    target:
+                      name: Harness-CI-CD-Zero-to-Hero
+                      type: repository
+                      variant: <+codebase.branch.name>
+
+                    advanced:
+                      log:
+                        level: info
+
+                      # Report only - DO NOT FAIL
+                      fail_on_severity: none
+
+
+              # ==========================================
+              # 2. DOCKER BUILD
+              #    BUILD ONLY - NO PUSH
+              # ==========================================
+
+              - step:
+                  type: BuildAndPushECR
+                  name: Build Docker Image
+                  identifier: Build_Docker_Image
+
+                  spec:
+                    connectorRef: AWS_ECR_OIDC
+
+                    region: <+pipeline.variables.AWS_REGION>
+                    account: <+pipeline.variables.AWS_ACCOUNT_ID>
+
+                    imageName: <+pipeline.variables.ECR_REPOSITORY>
+
+                    tags:
+                      - <+codebase.commitSha>
+
+                    dockerfile: <+pipeline.variables.DOCKERFILE_PATH>
+                    context: <+pipeline.variables.DOCKER_CONTEXT>
+
+                    envVariables:
+                      PLUGIN_NO_PUSH: "true"
+                      PLUGIN_TAR_PATH: /harness/hello-world-image.tar
+
+
+              # ==========================================
+              # 3. TRIVY IMAGE SCAN
+              #    REPORT ONLY - DO NOT FAIL
+              # ==========================================
+
+              - step:
+                  type: AquaTrivy
+                  name: Trivy Image Scan
+                  identifier: Trivy_Image_Scan
+
+                  spec:
+                    mode: orchestration
+                    config: default
+
+                    target:
+                      name: <+pipeline.variables.ECR_REPOSITORY>
+                      type: container
+                      variant: <+codebase.commitSha>
+
+                    advanced:
+                      log:
+                        level: info
+
+                      # Report only - DO NOT FAIL
+                      fail_on_severity: none
+
+                    privileged: true
+
+                    image:
+                      type: local_archive
+                      workspace: /harness/hello-world-image.tar
+
+
+              # ==========================================
+              # 4. PUSH IMAGE TO ECR
+              # ==========================================
+
+              - step:
+                  type: BuildAndPushECR
+                  name: Push Image to ECR
+                  identifier: Push_Image_to_ECR
+
+                  spec:
+                    connectorRef: AWS_ECR_OIDC
+
+                    region: <+pipeline.variables.AWS_REGION>
+                    account: <+pipeline.variables.AWS_ACCOUNT_ID>
+
+                    imageName: <+pipeline.variables.ECR_REPOSITORY>
+
+                    tags:
+                      - <+codebase.commitSha>
+
+                    envVariables:
+                      PLUGIN_PUSH_ONLY: "true"
+                      PLUGIN_SOURCE_TAR_PATH: /harness/hello-world-image.tar
