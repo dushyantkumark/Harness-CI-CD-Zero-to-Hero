@@ -68,8 +68,8 @@ pipeline:
 
 
               # ==================================================
-              # 2. BUILD IMAGE
-              #    EXPORT DIRECTLY AS DOCKER ARCHIVE
+              # 2. DOCKER BUILD
+              #    IMAGE REMAINS IN DOCKER DAEMON
               # ==================================================
 
               - step:
@@ -87,19 +87,11 @@ pipeline:
 
                       IMAGE_NAME="<+variable.AWS_ACCOUNT_ID>.dkr.ecr.<+variable.AWS_REGION>.amazonaws.com/<+variable.ECR_REPOSITORY>:<+codebase.commitSha>"
 
-                      IMAGE_TAR="hello-world-image.tar"
-
                       echo "=========================================="
                       echo "Docker Version"
                       echo "=========================================="
 
                       docker version
-
-                      echo "=========================================="
-                      echo "Buildx Version"
-                      echo "=========================================="
-
-                      docker buildx version
 
                       echo "=========================================="
                       echo "Image Name"
@@ -111,29 +103,33 @@ pipeline:
                       echo "Building Docker Image"
                       echo "=========================================="
 
-                      rm -f "${IMAGE_TAR}"
-
-                      docker buildx build \
+                      docker build \
                         --pull \
-                        --file "<+variable.DOCKERFILE_PATH>" \
-                        --tag "${IMAGE_NAME}" \
-                        --output "type=docker,dest=${IMAGE_TAR}" \
+                        -f "<+variable.DOCKERFILE_PATH>" \
+                        -t "${IMAGE_NAME}" \
                         "<+variable.DOCKER_CONTEXT>"
 
                       echo "=========================================="
-                      echo "Docker Archive Created"
+                      echo "Docker Image Created"
                       echo "=========================================="
 
-                      test -s "${IMAGE_TAR}"
+                      docker images "${IMAGE_NAME}"
 
-                      ls -lh "${IMAGE_TAR}"
+                      echo "=========================================="
+                      echo "Docker Image ID"
+                      echo "=========================================="
 
-                      echo "Docker archive successfully created."
+                      docker image inspect "${IMAGE_NAME}" \
+                        --format '{{.Id}}'
+
+                      echo "=========================================="
+                      echo "Build Completed Successfully"
+                      echo "=========================================="
 
 
               # ==================================================
               # 3. TRIVY IMAGE SCAN
-              #    SCAN LOCAL DOCKER ARCHIVE
+              #    LOCAL DOCKER IMAGE
               #    REPORT ONLY - DO NOT FAIL
               # ==================================================
 
@@ -150,8 +146,6 @@ pipeline:
                       name: <+variable.ECR_REPOSITORY>
                       type: container
                       variant: <+codebase.commitSha>
-                      workspace: hello-world-image.tar
-                      detection: manual
 
                     advanced:
                       log:
@@ -161,13 +155,14 @@ pipeline:
                     privileged: true
 
                     image:
-                      type: local_archive
+                      type: local_image
+                      name: <+variable.ECR_REPOSITORY>
+                      tag: <+codebase.commitSha>
 
 
               # ==================================================
               # 4. PUSH IMAGE TO ECR
-              #    PUSH EXISTING ARCHIVE
-              #    NO REBUILD
+              #    USE HARNESS AWS OIDC CONNECTOR
               # ==================================================
 
               - step:
@@ -188,4 +183,3 @@ pipeline:
 
                     envVariables:
                       PLUGIN_PUSH_ONLY: "true"
-                      PLUGIN_SOURCE_TAR_PATH: hello-world-image.tar
