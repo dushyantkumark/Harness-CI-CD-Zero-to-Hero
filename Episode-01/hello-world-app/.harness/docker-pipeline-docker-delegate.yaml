@@ -83,3 +83,4 @@ pipeline:
 
                       echo ""
                       echo "=== Pipeline Success! ==="
+                      echo "-- Happy Harness AI --"
