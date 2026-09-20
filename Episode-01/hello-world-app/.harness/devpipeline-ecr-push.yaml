@@ -44,7 +44,6 @@ pipeline:
 
               # ==================================================
               # 1. TRIVY FILESYSTEM SCAN
-              #    REPORT ONLY - DO NOT FAIL
               # ==================================================
 
               - step:
@@ -68,8 +67,8 @@ pipeline:
 
 
               # ==================================================
-              # 2. DOCKER BUILD
-              #    BUILD IMAGE + CREATE TAR
+              # 2. BUILD DOCKER IMAGE
+              #    + SAVE IMAGE AS DOCKER ARCHIVE
               # ==================================================
 
               - step:
@@ -118,7 +117,7 @@ pipeline:
                       docker images "${IMAGE_NAME}"
 
                       echo "=========================================="
-                      echo "Saving Docker Image to TAR"
+                      echo "Creating Docker Archive"
                       echo "=========================================="
 
                       rm -f "${IMAGE_TAR}"
@@ -128,21 +127,19 @@ pipeline:
                         "${IMAGE_NAME}"
 
                       echo "=========================================="
-                      echo "Validating Docker TAR"
+                      echo "Validating Docker Archive"
                       echo "=========================================="
+
+                      test -s "${IMAGE_TAR}"
 
                       ls -lh "${IMAGE_TAR}"
 
-                      file "${IMAGE_TAR}"
-
-                      echo "=========================================="
-                      echo "Docker TAR Created Successfully"
-                      echo "=========================================="
+                      echo "Docker archive successfully created."
 
 
               # ==================================================
               # 3. TRIVY IMAGE SCAN
-              #    REPORT ONLY - DO NOT FAIL
+              #    REPORT ONLY
               # ==================================================
 
               - step:
@@ -173,7 +170,7 @@ pipeline:
 
 
               # ==================================================
-              # 4. PUSH EXISTING IMAGE TAR TO ECR
+              # 4. PUSH EXISTING IMAGE TO ECR
               #    NO REBUILD
               # ==================================================
 
