@@ -14,16 +14,19 @@ pipeline:
         repoName: Harness-CI-CD-Zero-to-Hero
         build: <+input>
 
+  # ================================================================
+  # PIPELINE VARIABLES
+  # ================================================================
   variables:
 
-    # ================================================================
-    # TRIVY FILESYSTEM SCAN CHECKBOX
-    # ================================================================
+    # Runtime input:
+    # true  = Run Trivy FS Scan
+    # false = Skip Trivy FS Scan
     - name: RUN_TRIVY_FS_SCAN
-      type: Boolean
-      description: "Run Trivy filesystem scan"
-      required: false
-      value: false
+      type: String
+      description: "Run Trivy filesystem scan? Enter true or false."
+      required: true
+      value: <+input>
 
   stages:
 
@@ -39,7 +42,7 @@ pipeline:
           cloneCodebase: true
 
           # ==========================================================
-          # YOUR EC2 DOCKER RUNNER
+          # EC2 DOCKER RUNNER
           # ==========================================================
           platform:
             os: Linux
@@ -64,9 +67,12 @@ pipeline:
                   name: Trivy FS Scan
                   identifier: Trivy_FS_Scan
 
+                  # --------------------------------------------------
+                  # Run only when user selects "true"
+                  # --------------------------------------------------
                   when:
                     stageStatus: Success
-                    condition: <+pipeline.variables.RUN_TRIVY_FS_SCAN> == true
+                    condition: <+pipeline.variables.RUN_TRIVY_FS_SCAN> == "true"
 
                   spec:
                     mode: orchestration
@@ -82,7 +88,7 @@ pipeline:
                         level: info
 
                       # Report only
-                      # Critical/High vulnerabilities will NOT fail pipeline
+                      # Vulnerabilities will NOT fail the pipeline
                       fail_on_severity: none
 
                     privileged: true
@@ -175,28 +181,34 @@ pipeline:
               # ======================================================
               # 3. TRIVY DOCKER IMAGE SCAN
               # ======================================================
+              # Currently commented as requested.
+              #
+              # Uncomment when you want to enable image scanning.
+              # ======================================================
+
               # - step:
               #     type: AquaTrivy
               #     name: Trivy Image Scan
               #     identifier: Trivy_Image_Scan
-
+              #
               #     spec:
               #       mode: orchestration
               #       config: default
-
+              #
               #       target:
               #         type: container
               #         name: <+variable.ECR_REPOSITORY>
               #         variant: <+codebase.commitSha>
-
+              #
               #       advanced:
               #         log:
               #           level: info
-
+              #
+              #         # Report only
               #         fail_on_severity: none
-
+              #
               #       privileged: true
-
+              #
               #       image:
               #         type: local_image
               #         name: <+variable.ECR_REPOSITORY>
