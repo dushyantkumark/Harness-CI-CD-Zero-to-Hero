@@ -15,7 +15,7 @@ pipeline:
   name: devpipeline
   identifier: devpipeline
 
-  projectIdentifier: HarnessCICDZerotoHero
+  projectIdentifier: HarnessCICD
   orgIdentifier: default
 
   tags: {}
