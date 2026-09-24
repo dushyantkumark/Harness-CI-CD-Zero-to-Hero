@@ -1,16 +1,3 @@
-# ============================================
-# HARNESS CI PIPELINE - Hello World (Episode 1)
-# ============================================
-# If you are using this pipeline, change these values:
-#
-# 1. projectIdentifier → Your Harness project ID (find in URL after /projects/)
-# 2. orgIdentifier → Your organization name (usually "default")
-# 3. connectorRef → Your GitHub connector name (with "account." prefix if account-level)
-# 4. repoName → Your GitHub repository name (if using codebase)
-#
-# Infrastructure: Harness Cloud (free, needs credit card verification)
-# No Delegate needed for this pipeline.
-# ============================================
 pipeline:
   name: devpipeline
   identifier: devpipeline
@@ -37,13 +24,6 @@ pipeline:
         spec:
           cloneCodebase: true
 
-          caching:
-            enabled: true
-            override: true
-
-          buildIntelligence:
-            enabled: true
-
           platform:
             os: Linux
             arch: Amd64
@@ -56,12 +36,13 @@ pipeline:
             steps:
               - step:
                   type: Run
-                  name: Run_1
-                  identifier: Run_1
+                  name: Build Hello World
+                  identifier: Build_Hello_World
 
                   spec:
                     image: maven:3.9-eclipse-temurin-21
                     shell: Sh
+
                     command: |-
                       echo "=== Building Hello World ==="
 
@@ -76,11 +57,9 @@ pipeline:
                       echo "=== Maven Build ==="
                       mvn clean package -q
 
-                      echo ""
                       echo "=== Running the App ==="
 
                       java -jar target/hello-world-1.0.0.jar
 
-                      echo ""
                       echo "=== Pipeline Success! ==="
                       echo "-- Happy Harness AI --"
