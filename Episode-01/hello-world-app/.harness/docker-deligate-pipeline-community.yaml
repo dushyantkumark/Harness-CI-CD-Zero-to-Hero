@@ -15,7 +15,7 @@ pipeline:
   name: devpipeline
   identifier: devpipeline
 
-  projectIdentifier: Harness-COmmunity-Demo
+  projectIdentifier: Harness-Community-Demo
   orgIdentifier: default
 
   tags: {}
